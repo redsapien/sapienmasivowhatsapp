@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Sapien Gastro | Dashboard de Jacqueline</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --accent-pink: #ff6bda;
+            --accent-gold: #f3cfb0;
+            --whatsapp-green: #25D366;
+            --sent-red: #ff4d4d;
+            --shadow: 0 4px 15px rgba(255, 107, 218, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header { text-align: center; margin-bottom: 30px; animation: fadeIn 0.8s ease; }
+        .logo { max-width: 150px; filter: drop-shadow(0 0 10px var(--accent-pink)); margin-bottom: 10px; }
+        h1 { color: var(--accent-gold); font-size: 2.2rem; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { color: var(--accent-pink); font-size: 1rem; opacity: 0.8; }
+
+        .upload-section {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px dashed var(--accent-pink);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease;
+        }
+
+        .status-bar {
+            width: 100%; max-width: 900px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: #222; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px;
+            border-left: 4px solid var(--accent-pink); display: none;
+        }
+
+        #container {
+            width: 100%; max-width: 900px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px; padding-bottom: 50px;
+        }
+
+        .card {
+            background-color: var(--card-bg); border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        .card-header { border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
+        .business-name { color: var(--accent-gold); font-size: 1.1rem; font-weight: bold; }
+        .business-city { color: var(--text-color); opacity: 0.7; font-size: 0.85rem; }
+
+        .action-area { display: flex; flex-direction: column; gap: 10px; }
+
+        .btn-copy {
+            background-color: transparent; color: var(--accent-pink);
+            border: 1px solid var(--accent-pink); padding: 8px; border-radius: 6px;
+            cursor: pointer; font-size: 0.85rem; transition: var(--transition);
+        }
+        .btn-copy:hover { background-color: var(--accent-pink); color: #000; }
+
+        .btn-whatsapp {
+            background-color: var(--whatsapp-green); color: white; text-decoration: none;
+            padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: var(--transition); cursor: pointer; border: none;
+        }
+        
+        .btn-whatsapp.sent {
+            background-color: var(--sent-red) !important; color: white !important;
+            pointer-events: none; opacity: 0.8;
+        }
+
+        /* --- Modal AntonellaGame --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center;
+            z-index: 1000; flex-direction: column;
+        }
+        .game-container {
+            background: var(--card-bg); padding: 20px; border-radius: 15px; border: 2px solid var(--accent-pink);
+            text-align: center; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 0 30px rgba(255, 107, 218, 0.3);
+        }
+        .game-container h2 { color: var(--accent-gold); margin-top: 0; margin-bottom: 5px;}
+        .game-container p { color: var(--text-color); font-size: 0.9rem; margin-bottom: 15px;}
+        canvas { background: #000; border: 1px solid #333; margin-bottom: 15px; }
+        .btn-next-batch {
+            background: var(--accent-pink); color: black; border: none; padding: 12px 25px;
+            border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-next-batch:hover { transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="Imagenes/Logo-Red-Sapien.webp" alt="Logo Red Sapien" class="logo">
+        <h1>Sistema Masivo</h1>
+        <div class="subtitle">Edición Especial Jacqueline ✨</div>
+    </div>
+
+    <div class="upload-section">
+        <div style="margin-bottom:15px; font-size: 0.95rem;">
+            <strong>¡Hola Jacqueline!</strong><br>
+            Sube tu archivo (Excel o CSV). El sistema te dará lotes de 30 mensajes para proteger la cuenta.
+        </div>
+        <input type="file" id="file-input" accept=".csv, .xlsx, .xls">
+    </div>
+
+    <div class="status-bar" id="status-bar">
+        <div id="batch-info">Lote Actual: 1</div>
+        <div id="progress-info">Enviados: 0 / 30</div>
+    </div>
+
+    <div id="container"></div>
+
+    <div class="modal-overlay" id="game-modal">
+        <div class="game-container">
+            <h2>AntonellaGame 👾</h2>
+            <p>¡Lote Completado! Juega un poco para darle pausa a WhatsApp.</p>
+            <canvas id="tetris" width="200" height="400"></canvas>
+            <p style="font-size:0.8rem; color:#888;">Usa las flechas (⬅️ ➡️ ⬇️) y Arriba (⬆️) para girar.</p>
+            <button class="btn-next-batch" onclick="nextBatch()">Siguiente Lote de 30 🚀</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Variables Globales ---
+        let globalData = [];
+        let currentIndex = 0;
+        const BATCH_SIZE = 30;
+        let sentInCurrentBatch = 0;
+
+        // --- Lógica de Carga (GARANTIZANDO EL 100%) ---
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name;
+            const fileExt = fileName.split('.').pop().toLowerCase();
+
+            if (fileExt === 'csv') {
+                Papa.parse(file, {
+                    header: true,
+                    transformHeader: h => h.trim(), // Limpia espacios en las columnas
+                    complete: function(results) { processData(results.data); }
+                });
+            } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""}); // defval evita que omita celdas vacías
+                    processData(jsonData);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        function processData(data) {
+            globalData = [];
+            data.forEach(row => {
+                // Solo descartamos si NO hay teléfono de ninguna forma
+                const phone = row.Phone || row.phone || row.Tel || "";
+                if (!phone || phone.toString().trim() === "") return;
+
+                // Datos con respaldos automáticos por si vienen vacíos en el Excel
+                const nameStr = row.Name || row.name || row.Nombre || "su negocio";
+                const cityStr = row.City || row.city || row.Ciudad || "";
+                const greetStr = row.Greeting || row.greeting || row.Saludo || "Hola";
+
+                globalData.push({
+                    Phone: phone.toString().replace(/\D/g,''),
+                    Name: nameStr.toString().trim().replace(/nan/i, "su negocio"),
+                    City: cityStr.toString().trim().replace(/nan/i, ""),
+                    Greeting: greetStr.toString().trim().replace(/nan/i, "Hola")
+                });
+            });
+
+            if (globalData.length === 0) {
+                alert("No se encontraron números válidos en el archivo.");
+                return;
+            }
+
+            document.querySelector('.upload-section').style.display = 'none';
+            document.getElementById('status-bar').style.display = 'flex';
+            
+            currentIndex = 0;
+            renderBatch();
+        }
+
+        // --- Renderizado por Lotes ---
+        function renderBatch() {
+            const container = document.getElementById('container');
+            container.innerHTML = '';
+            sentInCurrentBatch = 0;
+
+            const batch = globalData.slice(currentIndex, currentIndex + BATCH_SIZE);
+            updateStatusText(batch.length);
+
+            batch.forEach((row, i) => {
+                const absoluteIndex = currentIndex + i + 1;
+                
+                // Formateo visual
+                const cleanName = row.Name.replace(/\w\S*/g, (w) => (w.replace(/^\w/, (c) => c.toUpperCase())));
+                const cityText = row.City ? ` en ${row.City}` : "";
+                
+                // Mensajes
+                const mainMsg = `${row.Greeting}! Les escribo porque revisando su marca${cityText}... hoy se les está yendo mucha plata en comisiones de Rappi y apps de delivery 🧐\n\nMiren cómo recuperar ese 30% de ganancia real aquí:\n👇\nhttps://restaurantes.redsapien.com`;
+                const encodedMsg = encodeURIComponent(mainMsg);
+                const captionMsg = `Consulta para el equipo de ${cleanName}`;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="business-name">${cleanName}</div>
+                        <div class="business-city">${row.City || "Ciudad no especificada"} • ${row.Phone}</div>
+                    </div>
+                    <div class="action-area">
+                        <button class="btn-copy" onclick="copyCaption('${captionMsg.replace(/'/g, "\\'")}', this)">
+                            📋 Copiar pie de foto del video
+                        </button>
+                        <a href="https://wa.me/${row.Phone}?text=${encodedMsg}" 
+                           target="_blank" 
+                           class="btn-whatsapp" 
+                           onclick="handleSend(this, ${batch.length})">
+                            <span><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="18" style="filter:invert(1)"></span>
+                            Enviar Mensaje #${absoluteIndex}
+                        </a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- Interacciones y Flujo ---
+        function copyCaption(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = "✅ ¡Copiado!";
+                btn.style.borderColor = "var(--whatsapp-green)";
+                btn.style.color = "var(--whatsapp-green)";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.borderColor = "var(--accent-pink)";
+                    btn.style.color = "var(--accent-pink)";
+                }, 1500);
+            });
+        }
+
+        function handleSend(btn, currentBatchTotal) {
+            // Cambio visual Inmediato a ROJO
+            btn.classList.add('sent');
+            btn.innerHTML = `✔️ ENVIADO Y LISTO`;
+            
+            sentInCurrentBatch++;
+            updateStatusText(currentBatchTotal);
+
+            // Verificar si terminó el lote
+            if (sentInCurrentBatch >= currentBatchTotal) {
+                setTimeout(() => {
+                    if (currentIndex + BATCH_SIZE < globalData.length) {
+                        showGameModal();
+                    } else {
+                        alert("🎉 ¡FELICIDADES JACQUELINE! Has terminado toda la base de datos de hoy.");
+                    }
+                }, 1000);
+            }
+        }
+
+        function updateStatusText(totalInBatch) {
+            const batchNum = Math.floor(currentIndex / BATCH_SIZE) + 1;
+            const totalBatches = Math.ceil(globalData.length / BATCH_SIZE);
+            document.getElementById('batch-info').innerText = `Lote ${batchNum} de ${totalBatches} (Total Base: ${globalData.length})`;
+            document.getElementById('progress-info').innerText = `Enviados: ${sentInCurrentBatch} / ${totalInBatch}`;
+        }
+
+        function nextBatch() {
+            document.getElementById('game-modal').style.display = 'none';
+            currentIndex += BATCH_SIZE;
+            renderBatch();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- ANTONELLAGAME (Mini Tetris) Lógica ---
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        context.scale(20, 20);
+
+        function arenaSweep() {
+            let rowCount = 1;
+            outer: for (let y = arena.length - 1; y >= 0; --y) {
+                for (let x = 0; x < arena[y].length; ++x) {
+                    if (arena[y][x] === 0) continue outer;
+                }
+                const row = arena.splice(y, 1)[0].fill(0);
+                arena.unshift(row);
+                ++y;
+            }
+        }
+
+        function collide(arena, player) {
+            const [m, o] = [player.matrix, player.pos];
+            for (let y = 0; y < m.length; ++y) {
+                for (let x = 0; x < m[y].length; ++x) {
+                    if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function createMatrix(w, h) {
+            const matrix = [];
+            while (h--) matrix.push(new Array(w).fill(0));
+            return matrix;
+        }
+
+        function createPiece(type) {
+            if (type === 'T') return [[0,0,0],[1,1,1],[0,1,0]];
+            if (type === 'O') return [[2,2],[2,2]];
+            if (type === 'L') return [[0,3,0],[0,3,0],[0,3,3]];
+            if (type === 'J') return [[0,4,0],[0,4,0],[4,4,0]];
+            if (type === 'I') return [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];
+            if (type === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
+            if (type === 'Z') return [[7,7,0],[0,7,7],[0,0,0]];
+        }
+
+        function drawMatrix(matrix, offset) {
+            const colors = [null, '#ff6bda', '#f3cfb0', '#25D366', '#00bcd4', '#ffeb3b', '#9c27b0', '#ff5722'];
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        context.fillStyle = colors[value];
+                        context.fillRect(x + offset.x, y + offset.y, 1, 1);
+                    }
+                });
+            });
+        }
+
+        function draw() {
+            context.fillStyle = '#000';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            drawMatrix(arena, {x: 0, y: 0});
+            drawMatrix(player.matrix, player.pos);
+        }
+
+        function merge(arena, player) {
+            player.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
+                });
+            });
+        }
+
+        function playerDrop() {
+            player.pos.y++;
+            if (collide(arena, player)) {
+                player.pos.y--;
+                merge(arena, player);
+                playerReset();
+                arenaSweep();
+            }
+            dropCounter = 0;
+        }
+
+        function playerMove(dir) {
+            player.pos.x += dir;
+            if (collide(arena, player)) player.pos.x -= dir;
+        }
+
+        function playerReset() {
+            const pieces = 'ILJOTSZ';
+            player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+            player.pos.y = 0;
+            player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+            if (collide(arena, player)) {
+                arena.forEach(row => row.fill(0));
+            }
+        }
+
+        function playerRotate() {
+            const pos = player.pos.x;
+            let offset = 1;
+            rotate(player.matrix);
+            while (collide(arena, player)) {
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > player.matrix[0].length) {
+                    rotate(player.matrix, -1);
+                    player.pos.x = pos;
+                    return;
+                }
+            }
+        }
+
+        function rotate(matrix, dir = 1) {
+            for (let y = 0; y < matrix.length; ++y) {
+                for (let x = 0; x < y; ++x) {
+                    [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+                }
+            }
+            if (dir > 0) matrix.forEach(row => row.reverse());
+            else matrix.reverse();
+        }
+
+        let dropCounter = 0;
+        let dropInterval = 1000;
+        let lastTime = 0;
+
+        function updateGame(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) playerDrop();
+            draw();
+            if (document.getElementById('game-modal').style.display === 'flex') {
+                requestAnimationFrame(updateGame);
+            }
+        }
+
+        const arena = createMatrix(10, 20);
+        const player = { pos: {x: 0, y: 0}, matrix: null };
+
+        document.addEventListener('keydown', event => {
+            if (document.getElementById('game-modal').style.display !== 'flex') return;
+            if (event.keyCode === 37) playerMove(-1);
+            else if (event.keyCode === 39) playerMove(1);
+            else if (event.keyCode === 40) playerDrop();
+            else if (event.keyCode === 38) playerRotate();
+        });
+
+        function showGameModal() {
+            document.getElementById('game-modal').style.display = 'flex';
+            playerReset();
+            arena.forEach(row => row.fill(0)); // Limpiar tablero
+            updateGame();
+        }
+
+    </script>
+</body>
+</html>
