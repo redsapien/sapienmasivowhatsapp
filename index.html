@@ -28,18 +28,30 @@
         .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 900px; }
         .logo { max-width: 140px; filter: drop-shadow(0 0 8px var(--accent-pink)); margin-bottom: 5px; }
         h1 { color: var(--accent-gold); font-size: 1.4rem; margin: 5px 0; text-transform: uppercase; letter-spacing: 2px; }
+        
         .upload-section {
             background: #161616; padding: 25px; border-radius: 15px; border: 1px dashed var(--accent-pink);
             text-align: center; width: 95%; max-width: 500px; box-shadow: var(--shadow);
         }
+
         .status-bar {
             width: 100%; max-width: 900px; display: none; flex-direction: column;
             background: #1a1a1a; padding: 15px; border-radius: 12px;
             margin-bottom: 20px; border: 1px solid #333; gap: 10px;
         }
         .status-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
+        /* Estilos Navegación de Lotes */
+        .nav-controls { display: flex; align-items: center; gap: 10px; }
+        .btn-nav { 
+            background: #333; color: white; border: 1px solid #444; 
+            padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;
+        }
+        .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
         .progress-container { width: 100%; background: #000; height: 8px; border-radius: 4px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--accent-pink); width: 0%; transition: width 0.5s ease; }
+        
         #container {
             width: 100%; max-width: 1000px;
             display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -54,6 +66,7 @@
         .business-info { margin-bottom: 15px; }
         .business-name { color: var(--accent-gold); font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
         .business-meta { color: #888; font-size: 0.85rem; margin-top: 4px; }
+        
         .btn-copy {
             background: rgba(255, 107, 218, 0.08); color: var(--accent-pink);
             border: 1px solid var(--accent-pink); padding: 12px; border-radius: 10px;
@@ -66,6 +79,7 @@
             cursor: pointer; width: 100%; font-size: 1rem;
         }
         .btn-whatsapp.sent-mode { background-color: var(--sent-red); cursor: default; }
+
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); display: none; justify-content: center;
@@ -93,19 +107,27 @@
         <img src="Imagenes/Logo-Red-Sapien.webp" alt="Logo" class="logo">
         <h1>Sistema Masivo Jacqueline</h1>
     </div>
+
     <div class="upload-section" id="upload-box">
         <p>Carga el archivo con los registros (Excel/CSV)</p>
         <input type="file" id="file-input" accept=".csv, .xlsx, .xls" style="color: white;">
     </div>
+
     <div class="status-bar" id="status-bar">
         <div class="status-top">
-            <b id="batch-text" style="color: var(--accent-gold);">Lote 1</b>
+            <div class="nav-controls">
+                <button class="btn-nav" id="btn-prev" onclick="changeBatch(-1)">◀</button>
+                <b id="batch-text" style="color: var(--accent-gold);">Lote 1</b>
+                <button class="btn-nav" id="btn-next-batch" onclick="changeBatch(1)">▶</button>
+            </div>
             <span id="progress-text">0 / 0</span>
             <button onclick="resetSystem()" style="background:none; border:none; color:#555; cursor:pointer; font-size: 0.7rem;">BORRAR TODO</button>
         </div>
         <div class="progress-container"><div class="progress-fill" id="progress-fill"></div></div>
     </div>
+
     <div id="container"></div>
+
     <div class="modal-overlay" id="game-modal">
         <div class="game-container">
             <div id="game-title" style="color:var(--accent-pink); font-size: 0.9rem; margin-bottom: 5px;">PAUSA DE SEGURIDAD</div>
@@ -127,7 +149,6 @@
         let sentStatus = {};
         const BATCH_SIZE = 30;
 
-        // --- TETRIS STATE ---
         let arena = Array.from({length: 19}, () => new Array(10).fill(0));
         let player = { pos: {x: 4, y: 0}, matrix: null };
         let gameActive = false;
@@ -177,6 +198,16 @@
             renderCurrentBatch();
         }
 
+        function changeBatch(dir) {
+            const newIndex = currentIndex + (dir * BATCH_SIZE);
+            if (newIndex >= 0 && newIndex < globalData.length) {
+                currentIndex = newIndex;
+                localStorage.setItem('js_idx', currentIndex);
+                renderCurrentBatch();
+                window.scrollTo(0, 0);
+            }
+        }
+
         function renderCurrentBatch() {
             const container = document.getElementById('container');
             container.innerHTML = '';
@@ -191,18 +222,14 @@
                 const card = document.createElement('div');
                 card.className = `card ${isSent ? 'is-sent' : ''}`;
                 
-                // MENSAJE SOLICITADO
-                const msg = `${row.Greeting} les escribo porque revisando su marca en ${row.City}... hoy se les está yendo mucha plata en comisiones de Rappi y apps de delivery 🧐\n\nMiren cómo recuperar ese 30% de ganancia real aquí:\n👇\nhttps://restaurantes.redsapien.com`;
-                const pie = `Consulta para el equipo de ${row.Name}`;
-
                 card.innerHTML = `
                     <div class="business-info">
                         <div class="business-name">${row.Name}</div>
                         <div class="business-meta">${row.City} • ${row.Phone}</div>
                     </div>
-                    <button class="btn-copy" onclick="copyText('${pie}', this)">📋 Copiar Pie de Video</button>
+                    <button class="btn-copy" onclick="handleCopy(${globalIdx}, this)">📋 Copiar Pie de Video</button>
                     <button class="btn-whatsapp ${isSent ? 'sent-mode' : ''}" 
-                            onclick="handleAction('${row.Phone}', '${encodeURIComponent(msg)}', '${id}')">
+                            onclick="handleAction(${globalIdx})">
                         ${isSent ? '✔️ ENVIADO' : 'Enviar WhatsApp'}
                     </button>
                 `;
@@ -213,21 +240,38 @@
 
         function updateStats() {
             const totalSent = Object.keys(sentStatus).length;
-            document.getElementById('batch-text').innerText = `Lote ${Math.floor(currentIndex/BATCH_SIZE)+1}`;
+            const totalBatches = Math.ceil(globalData.length / BATCH_SIZE);
+            const currentBatchNum = Math.floor(currentIndex / BATCH_SIZE) + 1;
+            
+            document.getElementById('batch-text').innerText = `Lote ${currentBatchNum} de ${totalBatches}`;
             document.getElementById('progress-text').innerText = `${totalSent} / ${globalData.length}`;
             document.getElementById('progress-fill').style.width = `${(totalSent / globalData.length) * 100}%`;
+            
+            document.getElementById('btn-prev').disabled = (currentIndex === 0);
+            document.getElementById('btn-next-batch').disabled = (currentIndex + BATCH_SIZE >= globalData.length);
         }
 
-        function handleAction(phone, msg, id) {
+        function handleCopy(idx, btn) {
+            const row = globalData[idx];
+            const text = `Consulta para el equipo de ${row.Name}`;
+            navigator.clipboard.writeText(text);
+            const old = btn.innerText; btn.innerText = "✅ COPIADO";
+            setTimeout(() => btn.innerText = old, 1500);
+        }
+
+        function handleAction(idx) {
+            const row = globalData[idx];
+            const id = `m_${idx}`;
             if(sentStatus[id]) return;
-            // 1. Guardar estado
+
+            const msg = `${row.Greeting} les escribo porque revisando su marca en ${row.City}... hoy se les está yendo mucha plata en comisiones de Rappi y apps de delivery 🧐\n\nMiren cómo recuperar ese 30% de ganancia real aquí:\n👇\nhttps://restaurantes.redsapien.com`;
+            
+            // Abrir primero para evitar bloqueo de pop-up
+            window.open(`https://wa.me/${row.Phone}?text=${encodeURIComponent(msg)}`, '_blank');
+
             sentStatus[id] = true;
             localStorage.setItem('js_sent', JSON.stringify(sentStatus));
             
-            // 2. Abrir WhatsApp
-            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-            
-            // 3. Evaluar lote y mostrar juego
             setTimeout(() => {
                 const end = Math.min(currentIndex + BATCH_SIZE, globalData.length);
                 let count = 0;
@@ -237,19 +281,13 @@
             }, 1000);
         }
 
-        function copyText(t, b) {
-            navigator.clipboard.writeText(t);
-            const old = b.innerText; b.innerText = "✅ COPIADO";
-            setTimeout(() => b.innerText = old, 1500);
-        }
-
-        // --- LÓGICA TETRIS ---
         function showGame(sec, isNext) {
             document.getElementById('game-modal').style.display = 'flex';
             document.getElementById('game-title').innerText = isNext ? "DESCANSO LOTE (6 MIN)" : "ESPERA ANTI-BLOQUEO (1 MIN)";
             const btn = document.getElementById('btn-continue');
             const timer = document.getElementById('timer-display');
             btn.disabled = true; btn.classList.remove('ready');
+            btn.innerText = "Esperando...";
             
             let left = sec;
             gameActive = true; resetPlayer(); runGame();
